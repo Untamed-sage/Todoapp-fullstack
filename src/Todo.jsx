@@ -8,7 +8,7 @@ const Todo = () => {
   const [editText, setEditText] = useState("");
 
   useEffect(() => {
-    fetch("http://localhost:3001/todos")
+    fetch("https://todoapp-fullstack-2.vercel.app/api/todos")
       .then((res) => res.json())
       .then((data) => setTodos(data));
   }, []);
@@ -16,7 +16,7 @@ const Todo = () => {
   const addTodo = () => {
     if (newTodo.trim() === "") return;
 
-    fetch("http://localhost:3001/todos", {
+    fetch("https://todoapp-fullstack-2.vercel.app/api/todos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text: newTodo, completed: false }),
@@ -32,7 +32,7 @@ const Todo = () => {
     const current = todos.find((t) => t.id === id);
     if (!current) return;
 
-    fetch(`http://localhost:3001/todos/${id}`, {
+    fetch(`https://todoapp-fullstack-2.vercel.app/api/todos/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...current, completed: !current.completed }),
@@ -46,7 +46,7 @@ const Todo = () => {
   };
 
   const deleteTodo = (id) => {
-    fetch(`http://localhost:3001/todos/${id}`, { method: "DELETE" }).then(() =>
+    fetch(`https://todoapp-fullstack-2.vercel.app/api/todos/${id}`, { method: "DELETE" }).then(() =>
       setTodos((prev) => prev.filter((t) => t.id !== id))
     );
   };
@@ -65,7 +65,7 @@ const Todo = () => {
     const current = todos.find((t) => t.id === editingId);
     if (!current || editText.trim() === "") return;
 
-    fetch(`http://localhost:3001/todos/${editingId}`, {
+    fetch(`https://todoapp-fullstack-2.vercel.app/api/todos/${editingId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...current, text: editText }),
