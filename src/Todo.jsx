@@ -1,4 +1,5 @@
 // src/Todo.jsx
+import React from "react";
 import { useEffect, useState } from "react";
 
 export default function TodoApp() {
@@ -7,14 +8,14 @@ export default function TodoApp() {
 
   // Fetch todos on load
   useEffect(() => {
-    fetch("/api/todos")
+    fetch("/api/index")
       .then(res => res.json())
       .then(data => setTodos(data));
   }, []);
 
   const addTodo = async () => {
     if (!input.trim()) return;
-    const res = await fetch("/api/todos", {
+    const res = await fetch("/api/index", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text: input })
@@ -25,7 +26,7 @@ export default function TodoApp() {
   };
 
   const deleteTodo = async id => {
-    await fetch(`/api/todos?id=${id}`, {
+    await fetch(`/api/index?id=${id}`, {
       method: "DELETE"
     });
     setTodos(prev => prev.filter(t => t.id !== id));
@@ -36,7 +37,7 @@ export default function TodoApp() {
       ...todo,
       completed: !todo.completed
     };
-    const res = await fetch(`/api/todos?id=${todo.id}`, {
+    const res = await fetch(`/api/index?id=${todo.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(updated)
