@@ -1,12 +1,13 @@
 // src/Todo.jsx
-import React from "react";
-import { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
+import { Plus, Check, Trash2, Edit3, X } from "lucide-react";
 
-export default function Todo() {
+const TodoApp = () => {
   const [todos, setTodos] = useState([]);
-  const [input, setInput] = useState("");
+  const [newTodo, setNewTodo] = useState("");
+  const [editingId, setEditingId] = useState(null);
+  const [editText, setEditText] = useState("");
 
-  // Fetch todos on load
   useEffect(() => {
     fetch("/api/index")
       .then(res => res.json())
@@ -14,78 +15,158 @@ export default function Todo() {
   }, []);
 
   const addTodo = async () => {
-    if (!input.trim()) return;
+    if (!newTodo.trim()) return;
     const res = await fetch("/api/index", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: input })
+      body: JSON.stringify({ text: newTodo })
     });
-    const newTodo = await res.json();
-    setTodos(prev => [...prev, newTodo]);
-    setInput("");
+    const data = await res.json();
+    setTodos(prev => [...prev, data]);
+    setNewTodo("");
   };
 
-  const deleteTodo = async id => {
-    await fetch(`/api/index?id=${id}`, {
-      method: "DELETE"
-    });
-    setTodos(prev => prev.filter(t => t.id !== id));
-  };
-
-  const toggleComplete = async todo => {
-    const updated = {
-      ...todo,
-      completed: !todo.completed
-    };
-    const res = await fetch(`/api/index?id=${todo.id}`, {
+  const toggleComplete = async (id) => {
+    const todo = todos.find(t => t.id === id);
+    const res = await fetch(`/api/index?id=${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(updated)
+      body: JSON.stringify({ ...todo, completed: !todo.completed })
     });
-    const newTodo = await res.json();
-    setTodos(prev =>
-      prev.map(t => (t.id === newTodo.id ? newTodo : t))
-    );
+    const updated = await res.json();
+    setTodos(todos.map(t => (t.id === id ? updated : t)));
+  };
+
+  const deleteTodo = async (id) => {
+    await fetch(`/api/index?id=${id}`, { method: "DELETE" });
+    setTodos(todos.filter(t => t.id !== id));
+  };
+
+  const startEdit = (id, text) => {
+    setEditingId(id);
+    setEditText(text);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditText("");
+  };
+
+  const saveEdit = async () => {
+    const res = await fetch(`/api/index?id=${editingId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: editText })
+    });
+    const updated = await res.json();
+    setTodos(todos.map(t => (t.id === updated.id ? updated : t)));
+    cancelEdit();
   };
 
   return (
-    <div className="max-w-md mx-auto mt-10 p-4 shadow-lg rounded-xl bg-white">
-      <h1 className="text-2xl font-bold mb-4">My Todos</h1>
-      <div className="flex mb-4">
-        <input
-          type="text"
-          className="flex-grow border rounded px-3 py-1"
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          placeholder="Add new todo..."
-        />
-        <button
-          onClick={addTodo}
-          className="ml-2 bg-blue-500 text-white px-4 py-1 rounded"
-        >
-          Add
-        </button>
-      </div>
-      <ul>
-        {todos.map(todo => (
-          <li
-            key={todo.id}
-            className={`flex justify-between items-center py-2 border-b ${
-              todo.completed ? "line-through text-gray-400" : ""
-            }`}
-          >
-            <span onClick={() => toggleComplete(todo)} className="cursor-pointer">
-              {todo.text}
-            </span>
+    <div className="min-h-screen bg-gray-50 p-4">
+      <div className="max-w-2xl mx-auto">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">Todo App</h1>
+          <p className="text-gray-600">CRUD Operations</p>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <h3 className="text-lg font-semibold text-gray-700 mb-3">Add New Todo</h3>
+          <div className="flex space-x-2">
+            <input
+              type="text"
+              value={newTodo}
+              onChange={(e) => setNewTodo(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && addTodo()}
+              placeholder="What needs to be done?"
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-400 outline-none"
+            />
             <button
-              onClick={() => deleteTodo(todo.id)}
-              className="text-red-500 hover:text-red-700"
+              onClick={addTodo}
+              className="bg-yellow-400 hover:bg-black text-white px-6 py-2 rounded-lg flex items-center space-x-2 transition-colors"
             >
-              Delete
+              <Plus size={20} />
+              <span>Add</span>
             </button>
-          </li>
-        ))}
-      </ul>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h3 className="text-lg font-semibold text-gray-700 mb-4">
+            Your Todos ({todos.length})
+          </h3>
+
+          {todos.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <Check size={48} className="mx-auto text-gray-300 mb-2" />
+              <p>No tasks yet. Add one!</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {todos.map(todo => (
+                <div
+                  key={todo.id}
+                  className={`p-4 border rounded-lg ${
+                    todo.completed ? 'bg-gray-50 border-gray-200' : 'bg-white border-gray-300'
+                  } hover:shadow-md transition`}
+                >
+                  <div className="flex items-center justify-between">
+                    {editingId === todo.id ? (
+                      <div className="flex-1 flex items-center space-x-2">
+                        <input
+                          type="text"
+                          value={editText}
+                          onChange={(e) => setEditText(e.target.value)}
+                          onKeyPress={(e) => e.key === 'Enter' && saveEdit()}
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                          autoFocus
+                        />
+                        <button onClick={saveEdit} className="text-green-600">
+                          <Check size={20} />
+                        </button>
+                        <button onClick={cancelEdit} className="text-red-600">
+                          <X size={20} />
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex items-center space-x-3 flex-1">
+                          <input
+                            type="checkbox"
+                            checked={todo.completed}
+                            onChange={() => toggleComplete(todo.id)}
+                            className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                          />
+                          <span className={`text-lg ${todo.completed ? "line-through text-gray-500" : "text-gray-800"}`}>
+                            {todo.text}
+                          </span>
+                          {todo.completed && (
+                            <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                              Completed
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex space-x-2">
+                          <button onClick={() => startEdit(todo.id, todo.text)} className="text-blue-600">
+                            <Edit3 size={18} />
+                          </button>
+                          <button onClick={() => deleteTodo(todo.id)} className="text-red-600">
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
-}
+};
+
+export default TodoApp;

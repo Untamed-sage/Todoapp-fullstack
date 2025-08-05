@@ -1,4 +1,4 @@
-// /api/todos.js
+// /api/index.js
 
 let todos = [
   { id: 1, text: "revising Node", completed: false },
