@@ -9,50 +9,38 @@ const TodoApp = () => {
 
   // Function to sort todos: incomplete tasks first (by newest), then completed tasks at bottom
   const sortTodos = (todoList) => {
-    return [...todoList].sort((a, b) => {
-      // If completion status is different, incomplete comes first
-      if (a.completed !== b.completed) {
-        return a.completed - b.completed;
-      }
-      // If both have same completion status, sort by creation time (newest first for incomplete, oldest first for completed)
-      if (!a.completed && !b.completed) {
-        return (b.createdAt || b.id) - (a.createdAt || a.id);
-      }
-      return (a.createdAt || a.id) - (b.createdAt || b.id);
-    });
+    const incomplete = todoList.filter(todo => !todo.completed);
+    const completed = todoList.filter(todo => todo.completed);
+    
+    // Sort incomplete todos by id/timestamp descending (newest first)
+    incomplete.sort((a, b) => (b.id || b.createdAt || 0) - (a.id || a.createdAt || 0));
+    
+    // Sort completed todos by id/timestamp ascending (oldest first)
+    completed.sort((a, b) => (a.id || a.createdAt || 0) - (b.id || b.createdAt || 0));
+    
+    return [...incomplete, ...completed];
   };
 
   useEffect(() => {
     fetch("/api/index")
       .then(res => res.json())
       .then(data => {
-        // Add createdAt timestamp if not present
-        const todosWithTimestamp = data.map(todo => ({
-          ...todo,
-          createdAt: todo.createdAt || Date.now()
-        }));
-        setTodos(sortTodos(todosWithTimestamp));
+        setTodos(sortTodos(data));
       });
   }, []);
 
   const addTodo = async () => {
     if (!newTodo.trim()) return;
     
-    // Create new todo with current timestamp
-    const newTodoItem = {
-      text: newTodo,
-      createdAt: Date.now()
-    };
-    
     const res = await fetch("/api/index", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(newTodoItem)
+      body: JSON.stringify({ text: newTodo })
     });
     const data = await res.json();
     
     // Add the new todo and sort
-    setTodos(prev => sortTodos([...prev, { ...data, createdAt: data.createdAt || Date.now() }]));
+    setTodos(prev => sortTodos([...prev, data]));
     setNewTodo("");
   };
 
@@ -66,7 +54,7 @@ const TodoApp = () => {
     const updated = await res.json();
     
     // Update the todo and sort to move completed items to bottom
-    setTodos(prev => sortTodos(prev.map(t => (t.id === id ? { ...updated, createdAt: t.createdAt } : t))));
+    setTodos(prev => sortTodos(prev.map(t => (t.id === id ? updated : t))));
   };
 
   const deleteTodo = async (id) => {
@@ -93,13 +81,11 @@ const TodoApp = () => {
     const updated = await res.json();
     
     // Update the todo while preserving sort order
-    setTodos(prev => sortTodos(prev.map(t => (t.id === updated.id ? { ...updated, createdAt: t.createdAt } : t))));
+    setTodos(prev => sortTodos(prev.map(t => (t.id === updated.id ? updated : t))));
     cancelEdit();
   };
 
-  // Separate completed and incomplete todos for display
-  const incompleteTodos = todos.filter(todo => !todo.completed);
-  const completedTodos = todos.filter(todo => todo.completed);
+
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">
@@ -142,76 +128,12 @@ const TodoApp = () => {
             </div>
           ) : (
             <div className="space-y-3">
-              {/* Show incomplete todos first */}
-              {incompleteTodos.length > 0 && (
-                <>
-                  {incompleteTodos.map(todo => (
-                    <div
-                      key={todo.id}
-                      className="p-4 border rounded-lg bg-white border-gray-300 hover:shadow-md transition"
-                    >
-                      <div className="flex items-center justify-between">
-                        {editingId === todo.id ? (
-                          <div className="flex-1 flex items-center space-x-2">
-                            <input
-                              type="text"
-                              value={editText}
-                              onChange={(e) => setEditText(e.target.value)}
-                              onKeyPress={(e) => e.key === 'Enter' && saveEdit()}
-                              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                              autoFocus
-                            />
-                            <button onClick={saveEdit} className="text-green-600">
-                              <Check size={20} />
-                            </button>
-                            <button onClick={cancelEdit} className="text-red-600">
-                              <X size={20} />
-                            </button>
-                          </div>
-                        ) : (
-                          <>
-                            <div className="flex items-center space-x-3 flex-1">
-                              <input
-                                type="checkbox"
-                                checked={todo.completed}
-                                onChange={() => toggleComplete(todo.id)}
-                                className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
-                              />
-                              <span className="text-lg text-gray-800">
-                                {todo.text}
-                              </span>
-                            </div>
-
-                            <div className="flex space-x-2">
-                              <button onClick={() => startEdit(todo.id, todo.text)} className="text-blue-600">
-                                <Edit3 size={18} />
-                              </button>
-                              <button onClick={() => deleteTodo(todo.id)} className="text-red-600">
-                                <Trash2 size={18} />
-                              </button>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </>
-              )}
-
-              {/* Show separator if both completed and incomplete tasks exist */}
-              {incompleteTodos.length > 0 && completedTodos.length > 0 && (
-                <div className="flex items-center my-6">
-                  <div className="flex-1 h-px bg-gray-200"></div>
-                  <span className="px-4 text-sm text-gray-500 bg-gray-50">Completed Tasks</span>
-                  <div className="flex-1 h-px bg-gray-200"></div>
-                </div>
-              )}
-
-              {/* Show completed todos at the bottom */}
-              {completedTodos.map(todo => (
+              {sortTodos(todos).map(todo => (
                 <div
                   key={todo.id}
-                  className="p-4 border rounded-lg bg-gray-50 border-gray-200 hover:shadow-md transition"
+                  className={`p-4 border rounded-lg ${
+                    todo.completed ? 'bg-gray-50 border-gray-200' : 'bg-white border-gray-300'
+                  } hover:shadow-md transition`}
                 >
                   <div className="flex items-center justify-between">
                     {editingId === todo.id ? (
@@ -240,12 +162,14 @@ const TodoApp = () => {
                             onChange={() => toggleComplete(todo.id)}
                             className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
                           />
-                          <span className="text-lg line-through text-gray-500">
+                          <span className={`text-lg ${todo.completed ? "line-through text-gray-500" : "text-gray-800"}`}>
                             {todo.text}
                           </span>
-                          <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
-                            Completed
-                          </span>
+                          {todo.completed && (
+                            <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                              Completed
+                            </span>
+                          )}
                         </div>
 
                         <div className="flex space-x-2">
